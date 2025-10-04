@@ -157,7 +157,7 @@ export const verifyEmail = async (req, res) => {
       return res.json({ success: false, message: "Invalid OTP" });
     }
 
-    if (user.verifyOtpExpire < Date.now()) {
+    if (user.verifyOtpExpireAt < Date.now()) {
       return res.json({ success: false, message: "OTP Expired" });
     }
 
@@ -175,7 +175,23 @@ export const verifyEmail = async (req, res) => {
 // check if user is Authenticated
 export const isAuthenticated = async (req, res) => {
   try {
-    return res.json({ success: true });
+    const { token } = req.cookies;
+
+    if (!token) {
+      return res.json({ success: false, message: "Not logged in" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await userModel.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.json({ success: false, message: "Invalid token" });
+    }
+
+    // Optional: Attach user to request if you need user info
+    req.user = user;
+
+    return res.json({ success: true, user });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
